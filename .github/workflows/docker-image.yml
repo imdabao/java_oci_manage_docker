@@ -49,8 +49,8 @@ jobs:
     - name: Package Docker Image
       id: package_image
       run: |
-        docker save -o image.tar java_oci_manage:$LATEST_TAG
-        echo "::set-output name=image_path::image.tar"
+        docker save -o java_oci_manage.tar java_oci_manage:$LATEST_TAG
+        echo "image_path=java_oci_manage.tar" >> $GITHUB_OUTPUT
       shell: bash
 
     - name: Upload Image Artifact
