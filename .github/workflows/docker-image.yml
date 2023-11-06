@@ -1,0 +1,47 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  schedule:
+    - cron: "0 0,12 * * *"
+
+jobs:
+
+  build:
+    permissions:
+      contents: write
+
+    runs-on: ubuntu-latest
+
+    env:
+      LATEST_TAG: ''
+
+    steps:
+    - name: Check Latest Release
+      id: check_release
+      run: |
+        latest_release=$(curl -s https://api.github.com/repos/semicons/java_oci_manage/releases/latest | jq -r .tag_name)
+        if [[ "$latest_release" == "${{ github.ref }}" ]]; then
+          echo "Latest release and current branch/tag match. Exiting the workflow."
+          exit 78
+        fi
+        echo "::set-env name=LATEST_TAG::${latest_release#v}"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Get Release Asset
+      id: get_asset
+      run: |
+        asset_url=$(curl -s https://api.github.com/repos/semicons/java_oci_manage/releases/latest | jq -r '.assets[] | select(.name | endswith(".tar.gz")) | .browser_download_url')
+        curl -L -o release_asset.tar.gz $asset_url
+        mkdir -p gz_client_bot
+        tar -xzvf release_asset.tar.gz -C ./gz_client_bot
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag java_oci_manage:$LATEST_TAG
